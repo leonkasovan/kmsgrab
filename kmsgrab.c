@@ -147,6 +147,11 @@ out_free_picture:
 	return ret;
 }
 
+#define MAXPATH 2048
+#define DEFAULT_FILE_NAME "screenshot_"
+#define DEFAULT_FILE_EXT ".png"
+#define DEFAULT_DIR "/recalbox/share/screenshots/"
+
 int main(int argc, char **argv)
 {
 	int err, drm_fd, prime_fd, retval = EXIT_FAILURE;
@@ -157,10 +162,27 @@ int main(int argc, char **argv)
 	drmModeFB *fb;
 	char buf[256];
 	uint64_t has_dumb;
+	time_t current_time;
+    struct tm *time_info;
+	char pngName[MAXPATH];
 
 	if (argc < 2) {
-		printf("Usage: kmsgrab <output.png>\n");
-		goto out_return;
+		strcpy(pngName, DEFAULT_DIR);
+		strcat(pngName, DEFAULT_FILE_NAME);
+		// Get the current time
+		time(&current_time);
+		time_info = localtime(&current_time);
+		// Format the time into a string
+    	strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", time_info);
+		strcat(pngName, buf);
+		strcat(pngName, DEFAULT_FILE_EXT);
+	}else{
+		if (strchr(argv[1], '/')){
+			strcpy(pngName,argv[1]);
+		}else{
+			strcpy(pngName, DEFAULT_DIR);
+			strcat(pngName, argv[1]);
+		}
 	}
 
 	for (card = 0; ; card++) {
@@ -230,7 +252,7 @@ int main(int argc, char **argv)
 		goto out_free_fb;
 	}
 
-	err = save_png(fb, prime_fd, argv[1]);
+	err = save_png(fb, prime_fd, pngName);
 	if (err < 0) {
 		fprintf(stderr, "Failed to take screenshot: %s\n",
 			strerror(-err));
@@ -238,6 +260,7 @@ int main(int argc, char **argv)
 	}
 
 	retval = EXIT_SUCCESS;
+	fprintf(stdout, "\nSaved in:%s\n", pngName);
 
 out_close_prime_fd:
 	close(prime_fd);
